@@ -44,9 +44,85 @@ c). By using combineByKey function on RDDS -- No need of formatting order_date o
 var joinedDF = ordersDF
 .join(orderItemDF,ordersDF("order_id")===orderItemDF("order_item_order_id"))
 
-4a) var dataframeResult = joinedDF.groupBy(to_date(from_unixtime(col("order_date")/1000)).alias("order_date_formatted"),col("order_status")).
+4 a) Just by using Data Frames API - here order_date should be YYYY-MM-DD format
+
+var dataframeResult = joinedDF.groupBy(to_date(from_unixtime(col("order_date")/1000)).alias("order_date_formatted"),col("order_status")).
 agg(round(sum(col("order_item_subtotal")),2).alias("total_amount"),countDistinct(col("order_id")).alias("total_orders").
 orderBy(col("order_date_formatted").desc,col("order_status"),col("total_amount").desc,col("total_orders"))
+
+4 b) Using Spark SQL  - here order_date should be YYYY-MM-DD format
+
+joinedDF.registerTempTable("orderanditems")
+
+var sqlResult = sqlContext.sql(select to_date(from_unixtime(order_date/1000)) as order_date_formatted, order_status, sum(order_item_subtotal) as decimal(10,2) as total_amount,
+count(distinct(order_id) as total_order from orderanditems group by order_date, order_status order by order_date_formatted desc,
+order_status, total_amount desc,total_orders desc).show()
+
+4 c) By using combineByKey function on RDDS -- No need of formatting order_date or total_amount
+
+var rddResult = joinedDF.map(x=> (x(1).toString,x(3).toString,x(0).toString.toInt,x(9).toString.toDouble));
+
+paired RDD and SWAP
+var rddResult = joinedDF.map(x=> ((x(1).toString,x(3).toString,(x(9).toString.toDouble,x(0).toString.toInt)));
+
+COMBINEBYKEY
+//intialization the lambda function with value double,int and will get the unique order_id and withing partition,doing aggregation
+
+var rddResult = joinedDF.map(x=> ((x(1).toString,x(3).toString,(x(9).toString.toDouble,x(0).toString.toInt))).
+combineByKey((x:(Double,Int)=> (x._1,Set(x._2)),(x:(Double,Set[Int]),(y:(Double,Int))=>(x._1+y._1,x._2+y._2),
+(x:(Double,Set[Int]),(y:(Double,Set[Int])=>(x._1+y._1,x._2++y._2));
+
+var rddResult = joinedDF.map(x=> ((x(1).toString,x(3).toString,(x(9).toString.toDouble,x(0).toString.toInt))).
+combineByKey((x:(Double,Int)=> (x._1,Set(x._2)),(x:(Double,Set[Int]),(y:(Double,Int))=>(x._1+y._1,x._2+y._2),
+(x:(Double,Set[Int]),(y:(Double,Set[Int])=>(x._1+y._1,x._2++y._2)).map(x=> (x._1._1,x._1._2,(x._2._1),x._2._2.size)).
+toDF().orderBy (col("_1").desc,col("_2"),col("_3").desc,col("_4"));
+
+Q5)//Store the result as parquet file into hdfs using gzip compression under folder
+/user/sumitsinha1680/problem1/result4a-gzip
+/user/sumitsinha1680/problem1/result4b-gzip
+/user/sumitsinha1680/problem1/result4c-gzip
+
+sqlContext.setConf("spark.sql.parquet.compression.codec","gzip");
+dataFrameResult.write.parquet("/user/sumitsinha1680/problem1/result4a-gzip");
+sqlResult.write.parquet("/user/sumitsinha1680/problem1/result4b-gzip");
+comByKeyResult.write.parquet("/user/sumitsinha1680/problem1/result4c-gzip");
+
+Q6)//Store the result as parquet file into hdfs using snappy compression under folder
+/user/cloudera/sumitsinha1680/result4a-snappy
+/user/cloudera/sumitsinha1680/result4b-snappy
+/user/cloudera/sumitsinha1680/result4c-snappy
+
+sqlContext.setConf("spark.sql.parquet.compression.codec","snappy");
+dataFrameResult.write.parquet("/user/sumitsinha1680/problem1/result4a-snappy");
+sqlResult.write.parquet("/user/sumitsinha1680/problem1/result4b-snappy");
+comByKeyResult.write.parquet("/user/sumitsinha1680/problem1/result4c-snappy");
+
+Q7)//Store the result as CSV file into hdfs using No compression under folder
+/user/sumitsinha1680/problem1/result4a-csv
+/user/sumitsinha1680/problem1/result4b-csv
+/user/sumitsinha1680/problem1/result4c-csv
+
+dataFrameResult.map(x=> x(0) + "," + x(1) + "," + x(2) + "," + x(3)).saveAsTextFile("/user/sumitsinha1680/problem1/result4a-csv")
+sqlResult.map(x=> x(0) + "," + x(1) + "," + x(2) + "," + x(3)).saveAsTextFile("/user/sumitsinha1680/problem1/result4b-csv")
+comByKeyResult.map(x=> x(0) + "," + x(1) + "," + x(2) + "," + x(3)).saveAsTextFile("/user/sumitsinha1680/problem1/result4c-csv")
+
+Q8)create a mysql table named result and load data from /user/sumitsinha1680/problem1/result4a-csv to mysql table named result
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
