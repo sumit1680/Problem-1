@@ -108,6 +108,19 @@ comByKeyResult.map(x=> x(0) + "," + x(1) + "," + x(2) + "," + x(3)).saveAsTextFi
 
 Q8)create a mysql table named result and load data from /user/sumitsinha1680/problem1/result4a-csv to mysql table named result
 
+a)   login to MYSQL using below : mysql -h localhost -u retail_dba -p
+    (when prompted password use cloudera or any password that you have currently set)
+    
+b) create table retail_db.result(order_date varchar(255) not null,order_status varchar(255) not null, total_orders int, 
+   total_amount numeric, constraint pk_order_result primary key (order_date,order_status)); 
+   
+c)sqoop export \
+--table result \
+--connect "jdbc:mysql://ms.itversity.com/retail_db" \
+--username retail_user \
+--password itversity \
+--export-dir "/user/sumitsinha1680/problem1/result4a-csv" \
+--columns "order_date,order_status,total_amount,total_orders"
 
 
 
